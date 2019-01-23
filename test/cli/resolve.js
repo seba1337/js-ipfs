@@ -71,4 +71,21 @@ describe('resolve', () => runOnAndOff((thing) => {
         expect(out).to.contain(`/ipfs/${fileHash}`)
       })
   })
+
+  it('should resolve an IPFS path non-link', (done) => {
+    const content = { path: { to: { file: 'foobar' } } }
+    const options = { format: 'dag-cbor', hashAlg: 'sha2-256' }
+
+    ipfs.dag.put(content, options, (err, cid) => {
+      expect(err).to.not.exist()
+
+      // FIXME: This should be /ipld/... but that's not supported yet.
+      const path = `/ipfs/${cid.toBaseEncodedString()}/path/to/file`
+      ipfs.resolve(path, (err, path) => {
+        expect(err).to.not.exist()
+        expect(path).to.equal(path)
+        done()
+      })
+    })
+  })
 }))

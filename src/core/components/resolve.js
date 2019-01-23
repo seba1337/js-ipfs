@@ -34,17 +34,15 @@ module.exports = (self) => {
 
     const path = split.slice(3).join('/')
 
-    resolve(cid, path, (err, cid) => {
+    resolve(cid, path, (err, cid, remainder) => {
       if (err) return cb(err)
-      if (!cid) return cb(new Error('found non-link at given path'))
-      cb(null, `/ipfs/${cidToString(cid, { base: opts.cidBase })}`)
+      cb(null, `/ipfs/${cidToString(cid, { base: opts.cidBase })}${!remainder ? '/' + remainder : ''}`)
     })
   })
 
   // Resolve the given CID + path to a CID.
   function resolve (cid, path, callback) {
     let value
-
     doUntil(
       (cb) => {
         self.block.get(cid, (err, block) => {
@@ -65,22 +63,20 @@ module.exports = (self) => {
         })
       },
       () => {
-        const endReached = !path || path === '/'
-
-        if (endReached) {
-          return true
-        }
-
-        if (value) {
+        if (value && value['/']) {
+          // If we've hit a CID, replace the current CID.
           cid = new CID(value['/'])
+        } else {
+          // We've hit a value. Return the current CID and the remaining path.
+          return false
         }
 
-        return false
+        // Continue resolving unless the path is empty.
+        return !path || path === '/'
       },
       (err) => {
         if (err) return callback(err)
-        if (value && value['/']) return callback(null, new CID(value['/']))
-        callback()
+        callback(null, cid, path)
       }
     )
   }
